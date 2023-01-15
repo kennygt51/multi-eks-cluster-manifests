@@ -1,0 +1,58 @@
+{{- range $i, $region := .Values.target_regions -}}
+{{- if ne $i 0 }}
+---
+{{- end }}
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: {{ $region }}-{{ include "multi-eks-cluster.fullname" $ }}-eks
+  namespace: default
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 192.168.0.0/16
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    kind: AWSManagedControlPlane
+    name: {{ $region }}-{{ include "multi-eks-cluster.fullname" $ }}-control-plane
+  infrastructureRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    kind: AWSManagedControlPlane
+    name: {{ $region }}-{{ include "multi-eks-cluster.fullname" $ }}-control-plane
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+kind: AWSManagedControlPlane
+metadata:
+  name: {{ $region }}-{{ include "multi-eks-cluster.fullname" $ }}-control-plane
+  namespace: default
+spec:
+  region: {{ $region }}
+  sshKeyName: capi-eks
+  version: v1.24.7
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachinePool
+metadata:
+  name: {{ $region }}-{{ include "multi-eks-cluster.fullname" $ }}-pool-0
+  namespace: default
+spec:
+  clusterName: {{ $region }}-{{ include "multi-eks-cluster.fullname" $ }}-eks
+  replicas: 2
+  template:
+    spec:
+      bootstrap:
+        dataSecretName: ""
+      clusterName: {{ $region }}-{{ include "multi-eks-cluster.fullname" $ }}-eks
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: AWSManagedMachinePool
+        name: {{ $region }}-{{ include "multi-eks-cluster.fullname" $ }}-pool-0
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: AWSManagedMachinePool
+metadata:
+  name: {{ $region }}-{{ include "multi-eks-cluster.fullname" $ }}-pool-0
+  namespace: default
+spec: {}
+{{- end -}}
